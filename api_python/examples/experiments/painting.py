@@ -123,6 +123,12 @@ class GripperCommandExample:
         gripper_command = Base_pb2.GripperCommand()
         finger = gripper_command.gripper.finger.add()
 
+        # e = threading.Event()
+        # notification_handle = base.OnNotificationActionTopic(
+        #     check_for_end_or_abort(e),
+        #     Base_pb2.NotificationOptions()
+        # )
+
         # Close the gripper with position increments
         print("Performing gripper test in position...")
         gripper_command.mode = Base_pb2.GRIPPER_POSITION
@@ -132,6 +138,7 @@ class GripperCommandExample:
         self.base.SendGripperCommand(gripper_command)
         time.sleep(1) # necessary, gives gripper time to move
         
+
 
 def angular_action(base, joint_angles):
 
@@ -214,12 +221,14 @@ def main():
     parser = argparse.ArgumentParser()
     args = utilities.parseConnectionArguments()
 
-    ROBOT_ORIGIN = (0.48, -.117, .177, 90, 0, 90) # TODO FIND THESE
-    # TODO hover 5cm above actual colors
-    COLOR1_POS = () # TODO FIND THESE
-    COLOR2_POS = ()
-    COLOR3_POS = ()
-    COLOR4_POS = ()
+    ROBOT_ORIGIN = (0.61, 0.195, .063, 90, 0, 90) # bottom left corner of paper
+    # hover ~5cm above actual colors
+    COLOR1_POS = (0.652, -0.067, 0.07, 90, 0, 90) # top left
+    COLOR2_POS = (0.614, -0.067, 0.07, 90, 0, 90) # middle left
+    COLOR3_POS = (0.573, -0.067, 0.07, 90, 0, 90) # bottom left
+    COLOR4_POS = (0.652, -0.116, 0.07, 90, 0, 90) # top right
+    COLOR5_POS = (0.614, -0.116, 0.07, 90, 0, 90) # middle right
+    COLOR6_POS = (0.573, -0.116, 0.07, 90, 0, 90) # bottom right
     
     # Painting
     image_path = 'stanford_logo.png'
@@ -235,24 +244,24 @@ def main():
         base_cyclic = BaseCyclicClient(router)
 
         success = True
-        gripper_pos = 0.0 # TODO FIND
+        gripper_pos = 0.89 # grip the paintbrush
         gripper.ExampleSendGripperCommands(base, gripper_pos)
 
         # HOME
         success &= example_move_to_home_position(base)
-        # START
-        start_pos = (.48, -.117, .177, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, start_pos)
 
-        for i in range(len(brushstrokes)):
-            start_pos = brushstrokes[i][0]
-            end_pos = brushstrokes[i][1]
-            color = brushstrokes[i][2]
+        for stroke in brushstrokes:
+            start_pos = stroke[0]
+            end_pos = stroke[1]
+            color = stroke[2]
+
             # GO TO COLOR
             if color == colors[0]:
                 color_pos = COLOR1_POS
             elif color == colors[1]:
                 color_pos = COLOR2_POS
+                print('white, skip.')
+                continue
             elif color == colors[2]:
                 color_pos = COLOR3_POS
             elif color == colors[3]:
@@ -260,22 +269,30 @@ def main():
             else:
                 print("ERROR: color not found")
                 return 1
-            success &= cartesian_action(base, base_cyclic, color_pos)
+
+            # GO TO COLOR
+            lifted_color_pos = (color_pos[0], color_pos[1], color_pos[2] + .05, color_pos[3], color_pos[4], color_pos[5])
+            success &= cartesian_action(base, base_cyclic, lifted_color_pos)
 
             # DIP IN COLOR
-            success &= cartesian_action(base, base_cyclic, (color_pos[0], color_pos[1], color_pos[2] - .05, color_pos[3], color_pos[4], color_pos[5]))
+            success &= cartesian_action(base, base_cyclic, color_pos)
 
             # LIFT UP
-            success &= cartesian_action(base, base_cyclic, (color_pos[0], color_pos[1], color_pos[2], color_pos[3], color_pos[4], color_pos[5]))
+            success &= cartesian_action(base, base_cyclic, lifted_color_pos)
             
             # START OF STROKE
-            success &= cartesian_action(base, base_cyclic, (start_pos[0], start_pos[1], start_pos[2] + .05, start_pos[3], start_pos[4], start_pos[5]))
+            lifted_start_pos = (start_pos[0], start_pos[1], start_pos[2] + .05, start_pos[3], start_pos[4], start_pos[5])
+            success &= cartesian_action(base, base_cyclic, lifted_start_pos)
             success &= cartesian_action(base, base_cyclic, start_pos)
 
             # PAINT
+            lifted_end_pos = (end_pos[0], end_pos[1], end_pos[2] + .05, end_pos[3], end_pos[4], end_pos[5])
             success &= cartesian_action(base, base_cyclic, end_pos)
+
             # LIFT UP
-            success &= cartesian_action(base, base_cyclic, (end_pos[0], end_pos[1], end_pos[2] + .05, end_pos[3], end_pos[4], end_pos[5]))
+            success &= cartesian_action(base, base_cyclic, lifted_end_pos)
+
+            print(f'\nstart, end, color_pos: \n{start_pos}, \n{end_pos}, \n{color_pos}, \n{lifted_color_pos}, \n{lifted_start_pos}, \n{end_pos}')
 
         return 0 if success else 1
 

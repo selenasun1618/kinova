@@ -136,34 +136,6 @@ class GripperCommandExample:
         print("Going to position {:0.2f}...".format(finger.value))
         self.base.SendGripperCommand(gripper_command)
         time.sleep(1) # necessary, gives gripper time to move
-
-        # print("Waiting for movement to finish ...")
-        # finished = e.wait(TIMEOUT_DURATION)
-        # base.Unsubscribe(notification_handle)
-
-        # if finished:
-        #     print("gripper movement completed")
-        # else:
-        #     print("Timeout on action notification wait")
-        # return finished
-
-        # # Set speed to open gripper
-        # print ("Opening gripper using speed command...")
-        # gripper_command.mode = Base_pb2.GRIPPER_SPEED
-        # finger.value = 0.1
-        # self.base.SendGripperCommand(gripper_command)
-        # gripper_request = Base_pb2.GripperRequest()
-
-        # # Wait for reported position to be opened
-        # gripper_request.mode = Base_pb2.GRIPPER_POSITION
-        # while True:
-        #     gripper_measure = self.base.GetMeasuredGripperMovement(gripper_request)
-        #     if len (gripper_measure.finger):
-        #         print("Current position is : {0}".format(gripper_measure.finger[0].value))
-        #         if gripper_measure.finger[0].value < 0.01:
-        #             break
-        #     else: # Else, no finger present in answer, end loop
-        #         break
         
 
 
@@ -242,6 +214,103 @@ def cartesian_action(base, base_cyclic, pose):
 # Example core functions
 #
 
+def robo_cocoa_choreo():
+# POUR ANGLE, CLOCKWISE = LOWER
+    pour_angle_right = 178.67
+
+    success = True
+    gripper_pos = 0.0
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+
+    # HOME
+    success &= example_move_to_home_position(base)
+    # START
+    start_pos = (.48, -.117, .177, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, start_pos)
+
+    # OPEN
+    gripper_pos = 0.39
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+
+    # TOWARDS CUP
+    pos = (.697, -.404, .23, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    pos = (.776, -.404, .23, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+
+    # PICK UP CUP
+    gripper_pos = 0.93
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+    pos = (.776, -.404, .389, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+
+    # POUR
+    pos = (0.735, -.135, 0.389, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 182.67]
+    success &= angular_action(base, twist)
+
+    # shake a little
+    for _ in range(4):
+        twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 184.67]
+        success &= angular_action(base, twist)
+        twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 182.67]
+        success &= angular_action(base, twist)
+    
+    time.sleep(2)
+    twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 77]
+    success &= angular_action(base, twist)
+    
+    # RETURN CUP
+    pos = (.776, -.404, .389, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    pos = (.729, -.404, .22, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    gripper_pos = 0.39
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+    pos = (.6, -.404, .22, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+
+    # HOME
+    success &= example_move_to_home_position(base)
+    gripper_pos = 0.0
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+    
+    # PICK UP STIRRER
+    pos = (.79, .05, .26, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    gripper_pos = 1.0
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+    # up
+    pos = (.79, .05, .42, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    # on top of cocoa
+    pos = (.72, -.11, .42, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    # down
+    pos = (.72, -.155, .312, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+
+    # STIR
+    for _ in range(7):
+        pos = (.751, -.13, .312, 90, 0, 90)
+        success &= cartesian_action(base, base_cyclic, pos)
+        pos = (.775, -.165, .312, 90, 0, 90)
+        success &= cartesian_action(base, base_cyclic, pos)
+        pos = (.751, -.19, .312, 90, 0, 90)
+        success &= cartesian_action(base, base_cyclic, pos)
+        pos = (.72, -.155, .312, 90, 0, 90)
+        success &= cartesian_action(base, base_cyclic, pos)
+
+    # lift up
+    pos = (.716, -.11, .42, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    pos = (.616, -.11, .42, 90, 0, 90)
+    success &= cartesian_action(base, base_cyclic, pos)
+    # drop
+    gripper_pos = 0.0
+    gripper.ExampleSendGripperCommands(base, gripper_pos)
+
 def main():
     # Import the utilities helper module
     import argparse
@@ -260,141 +329,25 @@ def main():
         base = BaseClient(router)
         base_cyclic = BaseCyclicClient(router)
 
-        # POUR ANGLE, CLOCKWISE = LOWER
-        pour_angle_right = 178.67
-
+        # robo_cocoa_choreo()
         success = True
-        gripper_pos = 0.0
+        gripper_pos = 0.88 # hold a pencil
         gripper.ExampleSendGripperCommands(base, gripper_pos)
 
         # HOME
         success &= example_move_to_home_position(base)
         # START
-        start_pos = (.48, -.117, .177, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, start_pos)
-
-        # OPEN
-        gripper_pos = 0.39
-        gripper.ExampleSendGripperCommands(base, gripper_pos)
-
-        # TOWARDS CUP
-        pos = (.697, -.404, .23, 90, 0, 90)
+        pos = (.53, .169, 0.041, 90, 0, 90)
         success &= cartesian_action(base, base_cyclic, pos)
-        pos = (.776, -.404, .23, 90, 0, 90)
+        pos = (.55, .169, 0.041, 90, 0, 90)
+        success &= cartesian_action(base, base_cyclic, pos)
+        pos = (.55, .149, 0.041, 90, 0, 90)
+        success &= cartesian_action(base, base_cyclic, pos)
+        pos = (.53, .149, 0.041, 90, 0, 90)
         success &= cartesian_action(base, base_cyclic, pos)
 
-        # PICK UP CUP
-        gripper_pos = 0.93
-        gripper.ExampleSendGripperCommands(base, gripper_pos)
-        pos = (.776, -.404, .389, 90, 0, 90)
+        pos = (.53, .169, 0.041, 90, 0, 90)
         success &= cartesian_action(base, base_cyclic, pos)
-
-        # POUR
-        pos = (0.735, -.135, 0.389, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 182.67]
-        success &= angular_action(base, twist)
-
-        # shake a little
-        for _ in range(4):
-            twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 184.67]
-            success &= angular_action(base, twist)
-            twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 182.67]
-            success &= angular_action(base, twist)
-        
-        time.sleep(2)
-        twist = [5.32, 37.76, 197.55, 259.44, 24, 53.18, 77]
-        success &= angular_action(base, twist)
-        
-        # RETURN CUP
-        pos = (.776, -.404, .389, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        pos = (.729, -.404, .22, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        gripper_pos = 0.39
-        gripper.ExampleSendGripperCommands(base, gripper_pos)
-        pos = (.6, -.404, .22, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-
-        # HOME
-        success &= example_move_to_home_position(base)
-        gripper_pos = 0.0
-        gripper.ExampleSendGripperCommands(base, gripper_pos)
-        
-        # PICK UP STIRRER
-        pos = (.79, .05, .26, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        gripper_pos = 1.0
-        gripper.ExampleSendGripperCommands(base, gripper_pos)
-        # up
-        pos = (.79, .05, .42, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        # on top of cocoa
-        pos = (.72, -.11, .42, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        # down
-        pos = (.72, -.155, .312, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-
-        # STIR
-        for _ in range(7):
-            pos = (.751, -.13, .312, 90, 0, 90)
-            success &= cartesian_action(base, base_cyclic, pos)
-            pos = (.775, -.165, .312, 90, 0, 90)
-            success &= cartesian_action(base, base_cyclic, pos)
-            pos = (.751, -.19, .312, 90, 0, 90)
-            success &= cartesian_action(base, base_cyclic, pos)
-            pos = (.72, -.155, .312, 90, 0, 90)
-            success &= cartesian_action(base, base_cyclic, pos)
-
-        # lift up
-        pos = (.716, -.11, .42, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        pos = (.616, -.11, .42, 90, 0, 90)
-        success &= cartesian_action(base, base_cyclic, pos)
-        # drop
-        gripper_pos = 0.0
-        gripper.ExampleSendGripperCommands(base, gripper_pos)
-
-        # MARSHMALLOW
-
-
-        # # TOWARDS KETTLE
-        # pos = (.719, .237, .227, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-        # pos = (0.788, 0.235, 0.227, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-
-        # # PICK UP KETTLE
-        # gripper_pos = 0.77
-        # gripper.ExampleSendGripperCommands(base, gripper_pos)
-        # pos = (0.785, 0.235, 0.349, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-
-        # # POUR
-        # pos = (.776, .157, .3335, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-        # twist = [354, 49, 161, 238, 338, 56, pour_angle_left]
-        # success &= angular_action(base, twist)
-        # twist = [354, 49, 161, 238, 338, 56, 118]
-        # success &= angular_action(base, twist)
-
-        # # RETURN KETTLE
-        # pos = (.776, .157, .3335, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-        # pos = (0.785, 0.235, 0.349, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-        # gripper_pos = 0.39
-        # gripper.ExampleSendGripperCommands(base, gripper_pos)
-
-        # # HOME
-        # start_pos = (.48, -.117, .177, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, start_pos)
-
-        # TOWARDS COCOA
-        # pos = (.776, .157, .3335, 90, 0, 90)
-        # success &= cartesian_action(base, base_cyclic, pos)
-
 
         return 0 if success else 1
 

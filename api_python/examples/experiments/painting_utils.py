@@ -5,11 +5,11 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 # CONSTANTS
-NUM_COLORS = 3
-STROKE_SIZE = 0.5 # in
+NUM_COLORS = 4
+STROKE_SIZE = 0.01 # m
 RESOLUTION = 1 / STROKE_SIZE # ppi
-CANVAS_DIM_X = 11 # in
-CANVAS_DIM_Y = 8.5 # in
+CANVAS_DIM_X = 0.254 # in
+CANVAS_DIM_Y = 0.1905 # in
 
 STROKE_SIZE_PIXELS = int(STROKE_SIZE * RESOLUTION) # old
 
@@ -28,7 +28,7 @@ def preprocessing(image_path):
     else:
         resized_image = cv2.resize(original_image, (int(RESOLUTION * CANVAS_DIM_Y), int(RESOLUTION * CANVAS_DIM_X)))
 
-    cv2.imshow('resized image', resized_image)
+    # cv2.imshow('resized image', resized_image)
 
     print(f'img size: {original_image.shape}')
     print(f'resized img size: {resized_image.shape}')
@@ -53,7 +53,7 @@ def apply_kmeans(image, num_clusters=NUM_COLORS):
     # cluster_centers = cluster_centers.astype(np.uint8) #coordinates of cluster centers
 
     # Display the representative colors
-    print("displaying")
+    # print("displaying")
     for i, color in enumerate(cluster_centers):
         color_swatch = np.zeros((100, 100, 3), dtype=np.uint8)
         color_swatch[:, :] = color*255
@@ -98,7 +98,8 @@ def draw_straight_strokes(image, cluster_labels, cluster_centers, num_colors=NUM
 
             # Add the last range
             strokes.append((start, relevant_points[-1], cluster_color))
-            colors.append(cluster_color)
+            if cluster_color not in colors:
+                colors.append(cluster_color)
             cv2.line(output_image, start, relevant_points[-1], cluster_color, 1)
 
     return output_image, strokes, colors
@@ -156,8 +157,8 @@ def pixel_to_physical_coords(pixel_coords, ROBOT_ORIGIN):
         start_x, start_y = pixel_coords[i][0]
         end_x, end_y = pixel_coords[i][1]
         cur = []
-        cur.append((start_x * STROKE_SIZE + ROBOT_ORIGIN[0], start_y * STROKE_SIZE + ROBOT_ORIGIN[1], ROBOT_ORIGIN[2], ROBOT_ORIGIN[3], ROBOT_ORIGIN[4], ROBOT_ORIGIN[5]))
-        cur.append((end_x * STROKE_SIZE + ROBOT_ORIGIN[0], end_y * STROKE_SIZE + ROBOT_ORIGIN[1],ROBOT_ORIGIN[2], ROBOT_ORIGIN[3], ROBOT_ORIGIN[4], ROBOT_ORIGIN[5]))
+        cur.append((start_y * STROKE_SIZE + ROBOT_ORIGIN[0], ROBOT_ORIGIN[1] - (start_x * STROKE_SIZE), ROBOT_ORIGIN[2], ROBOT_ORIGIN[3], ROBOT_ORIGIN[4], ROBOT_ORIGIN[5]))
+        cur.append((end_y * STROKE_SIZE + ROBOT_ORIGIN[0], ROBOT_ORIGIN[1] - (end_x * STROKE_SIZE), ROBOT_ORIGIN[2], ROBOT_ORIGIN[3], ROBOT_ORIGIN[4], ROBOT_ORIGIN[5]))
         cur.append(pixel_coords[i][2])
         physical_coords.append(cur)
     return physical_coords
@@ -176,7 +177,7 @@ def painting(image_path, save_path, ROBOT_ORIGIN):
     cv2.imwrite(save_path, output_image)
 
     scaled_img = Image.open(save_path)
-    scaled_img = scaled_img.resize((int(RESOLUTION * CANVAS_DIM_Y * 100), int(RESOLUTION * CANVAS_DIM_X * 100)))
+    scaled_img = scaled_img.resize((int(RESOLUTION * CANVAS_DIM_Y * 25), int(RESOLUTION * CANVAS_DIM_X * 25)))
     scaled_img_cv2 = cv2.cvtColor(np.array(scaled_img), cv2.COLOR_RGB2BGR)
     cv2.imshow('Scaled Painting', scaled_img_cv2)
     cv2.waitKey(0)
